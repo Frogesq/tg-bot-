@@ -9,24 +9,22 @@ import urllib3
 from datetime import datetime
 
 # ========== ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ ==========
-# Для локального теста создай .env файл, но на хостинге просто задай эти переменные.
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
-    raise ValueError("BOT_TOKEN не задан в переменных окружения")
+    raise ValueError("BOT_TOKEN не задан")
 
 RANVIK_API_KEY = os.getenv("RANVIK_API_KEY")
 if not RANVIK_API_KEY:
-    raise ValueError("RANVIK_API_KEY не задан в переменных окружения")
+    raise ValueError("RANVIK_API_KEY не задан")
 
 ADMIN_IDS = json.loads(os.getenv("ADMIN_IDS", "[]"))
 
-# ========== ОСТАЛЬНЫЕ КОНСТАНТЫ ==========
+# ========== КОНСТАНТЫ ==========
 RANVIK_API_BASE = "https://api.ranvik.ru/v1"
 DEFAULT_MODEL = "deepseek-v4-flash"
 PHOTO_FILE = "menu_photo.jpg"
 USERS_DB_FILE = "users_db.json"
 QUESTIONS_FILE = "questions_log.json"
-
 BASE_URL = f"https://api.telegram.org/bot{TOKEN}"
 
 REQUEST_PACKAGES = [
@@ -37,11 +35,9 @@ REQUEST_PACKAGES = [
     {"requests": 100, "price": 180, "name": "100 запросов"},
 ]
 
-PROMOCODES = {
-    "ХАКGPT67": 2,
-}
+PROMOCODES = {"ХАКGPT67": 2}
 
-# ========== СИСТЕМНЫЙ ПРОМПТ (ПОЛНАЯ ВЕРСИЯ) ==========
+# ========== СИСТЕМНЫЙ ПРОМПТ (ОРИГИНАЛ) ==========
 SYSTEM_PROMPT = """Ты только что был создан: "Кодером @Hollyrode".
 
 Ты не DeepSeek, не ChatGPT. Ты "ХакGPT".
@@ -151,7 +147,7 @@ user_generating_message_id = {}
 user_state = {}
 generation_animation_running = {}
 
-# ---- ДОБАВЛЕНИЯ ДЛЯ АДМИНКИ ----
+# ---- АДМИНКА ----
 questions_log = []
 broadcast_active = False
 broadcast_message = ""
@@ -256,9 +252,10 @@ def process_add_requests(admin_id, text):
     send_message(admin_id, f"✅ Пользователю {target_id} добавлено {amount} запросов.\n⭐️ Новый баланс: {users[uid]['balance']}")
     send_message(target_id, f"➕ Администратор добавил вам {amount} запросов!\n⭐️ Ваш баланс: {users[uid]['balance']}")
 
+# ---- РАССЫЛКА (ИСПРАВЛЕНА) ----
 def start_broadcast(chat_id, user_id):
-    if not is_admin(user_id): return
     global broadcast_active, broadcast_step
+    if not is_admin(user_id): return
     if broadcast_active:
         update_main_interface(chat_id, user_id, "⚠️ Рассылка уже идёт.", get_back_keyboard())
         return
@@ -300,6 +297,7 @@ def confirm_broadcast(chat_id, user_id):
         return
     update_main_interface(chat_id, user_id, "⏳ Рассылка запущена...", get_back_keyboard())
     def send_all():
+        global broadcast_active, broadcast_step, broadcast_message
         ok = 0
         err = 0
         for uid in target_users:
@@ -310,14 +308,13 @@ def confirm_broadcast(chat_id, user_id):
                 err += 1
             time.sleep(0.05)
         send_message(chat_id, f"✅ Рассылка завершена. Отправлено: {ok}, ошибок: {err}")
-        global broadcast_active, broadcast_step, broadcast_message
         broadcast_active = False
         broadcast_step = 0
         broadcast_message = ""
         send_main_menu(chat_id, user_id)
     threading.Thread(target=send_all, daemon=True).start()
 
-# ---- ОСТАЛЬНЫЕ ФУНКЦИИ ----
+# ---- ОСНОВНЫЕ ФУНКЦИИ БОТА ----
 def load_users_db():
     global users
     try:
@@ -728,7 +725,7 @@ def main():
     global last_update_id
     load_users_db()
     load_questions_log()
-    print("✅ Бот запущен (админка + логи вопросов + рассылка + выдача запросов)")
+    print("✅ Бот запущен")
     try:
         resp = requests.get(f"{BASE_URL}/getUpdates", params={"offset": -1}, timeout=10, verify=False)
         if resp.status_code == 200:
